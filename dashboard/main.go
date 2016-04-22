@@ -38,11 +38,12 @@ func main() {
 	gui.SetKeybinding("", 'q', gocui.ModNone, quit)
 
 	done := make(chan bool)
-	names := make([]string, 10)
+	refresh := make(chan bool)
 
 	go streamKafka(gui, partitionConsumer, done)
-	go updateNames(partitionConsumer, &names, done)
-	go displayNames(gui, &names)
+	go updateNames(gui, partitionConsumer, refresh, done)
+	go updateSums(gui, partitionConsumer, refresh, done)
+	go timer(refresh)
 
 	if err := gui.MainLoop(); err != nil && err != gocui.ErrQuit {
 		panic(err)
@@ -57,12 +58,16 @@ func mainScreenTurnOn(gui *gocui.Gui) error {
 	}
 	v.Autoscroll = true
 
-	v, err = gui.SetView("mainscreen", 10, 10, x-10, y-10)
+	v, err = gui.SetView("mainscreen", 0, 10, x, 12)
 	if err != nil && err != gocui.ErrUnknownView {
 		panic(err)
 	}
 
-	v.Clear()
+	v, err = gui.SetView("sumscreen", 0, 12, x, y)
+	if err != nil && err != gocui.ErrUnknownView {
+		panic(err)
+	}
+
 	return nil
 }
 
@@ -89,38 +94,78 @@ ConsumerLoop:
 	}
 }
 
-func updateNames(partitionConsumer sarama.PartitionConsumer, pNames *[]string, done <-chan bool) {
+func updateNames(gui *gocui.Gui, partitionConsumer sarama.PartitionConsumer, refresh <-chan bool, done <-chan bool) {
+	names := [10]string{}
+	pos := 0
+
 ConsumerLoop:
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			names := *pNames
-			var j *kafka.Message
-			json.Unmarshal(msg.Value, j)
-			if len(names) == cap(names) {
-				names = names[1:]
+			var j kafka.Message
+			if err := json.Unmarshal(msg.Value, &j); err != nil {
+				panic(nil)
 			}
-			names = append(names, "Hello")
-
+			//if len(names) == cap(names) {
+			//	names = names[1:]
+			//}
+			names[pos] = j.Msg
+			pos = (pos + 1) % 10
 		case <-done:
 			break ConsumerLoop
+		case <-refresh:
+			gui.Execute(func(g *gocui.Gui) error {
+				v, err := g.View("mainscreen")
+				if err != nil {
+					panic(err)
+				}
+				v.Clear()
+				fmt.Fprintln(v, names)
+				g.SetCurrentView("mainscreen")
+				return nil
+			})
 		}
 	}
 }
 
-func displayNames(gui *gocui.Gui, pNames *[]string) {
-	for {
-		gui.Execute(func(g *gocui.Gui) error {
-			v, err := g.View("mainscreen")
-			if err != nil {
-				panic(err)
-			}
-			v.Clear()
-			//			j, _ := json.Marshal(pNames)
-			fmt.Fprintln(v, "Hi!")
-			return nil
-		})
+func updateSums(gui *gocui.Gui, partitionConsumer sarama.PartitionConsumer, refresh <-chan bool, done <-chan bool) {
+	sums := make(map[string]int)
+	sums[kafka.SrcIOS] = 0
+	sums[kafka.SrcBrowser] = 0
+	sums[kafka.SrcWeb] = 0
 
-		time.Sleep(2 * time.Millisecond)
+ConsumerLoop:
+	for {
+		select {
+		case msg := <-partitionConsumer.Messages():
+			var j kafka.Message
+			if err := json.Unmarshal(msg.Value, &j); err != nil {
+				panic(nil)
+			}
+			sums[j.Type] = sums[j.Type] + 1
+
+		case <-done:
+			break ConsumerLoop
+		case <-refresh:
+			gui.Execute(func(g *gocui.Gui) error {
+				v, err := g.View("sumscreen")
+				if err != nil {
+					panic(err)
+				}
+				v.Clear()
+				fmt.Fprintln(v, kafka.SrcIOS+": "+string(sums[kafka.SrcIOS]))
+				fmt.Fprintln(v, kafka.SrcBrowser+": "+string(sums[kafka.SrcBrowser]))
+				fmt.Fprintln(v, kafka.SrcWeb+": "+string(sums[kafka.SrcWeb]))
+				g.SetCurrentView("sumscreen")
+				return nil
+			})
+		}
+	}
+}
+
+func timer(refresh chan<- bool) {
+	for {
+		time.Sleep(1000 * time.Millisecond)
+		refresh <- true
 	}
 }
