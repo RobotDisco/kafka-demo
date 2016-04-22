@@ -11,12 +11,13 @@ const SrcBrowser = "JavaScript"
 const SrcWeb = "PHP"
 
 type Message struct {
-	Type string
-	IP   string
-	Msg  string
+	WorkerID int
+	Type     string
+	IP       string
+	Msg      string
 }
 
-func Generate() Message {
+func Generate(wid int) Message {
 	var msgType string
 	switch rand.Intn(3) {
 	case 0:
@@ -31,8 +32,9 @@ func Generate() Message {
 	msg := randomdata.FirstName(randomdata.RandomGender)
 
 	return Message{
-		Type: msgType,
-		IP:   src,
-		Msg:  msg,
+		WorkerID: wid,
+		Type:     msgType,
+		IP:       src,
+		Msg:      msg,
 	}
 }
