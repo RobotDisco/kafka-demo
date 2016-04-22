@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"tulip.io/hackday/kafka"
@@ -47,9 +48,10 @@ func producer(cid int) {
 			IP:       msg.IP,
 			Msg:      msg.Msg,
 		}
-		kmsg := &sarama.ProducerMessage{Topic: "test", Key: sarama.StringEncoder(msg.WorkerID), Value: msgEncoder}
+		kmsg := &sarama.ProducerMessage{Topic: "test", Key: sarama.StringEncoder(string(msg.WorkerID)), Value: msgEncoder}
 
 		conn.SendMessage(kmsg)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
