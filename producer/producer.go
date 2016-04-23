@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"tulip.io/hackday/kafka"
+	"tulip.io/hackday/kafkaDemo"
 )
 
 type MessageEncoder struct {
@@ -41,7 +41,7 @@ func producer(cid int) {
 	}()
 
 	for {
-		msg := kafka.Generate(cid)
+		msg := kafkaDemo.Generate(cid)
 		msgEncoder := &MessageEncoder{
 			WorkerID: msg.WorkerID,
 			Type:     msg.Type,

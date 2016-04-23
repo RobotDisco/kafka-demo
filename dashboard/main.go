@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/Shopify/sarama"
 	"github.com/jroimartin/gocui"
 	"time"
-	"tulip.io/hackday/kafka"
+	"github.com/RobotDisco/kafkaDemo"
 )
 
 func main() {
@@ -102,7 +103,7 @@ ConsumerLoop:
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			var j kafka.Message
+			var j kafkaDemo.Message
 			if err := json.Unmarshal(msg.Value, &j); err != nil {
 				panic(nil)
 			}
@@ -130,15 +131,15 @@ ConsumerLoop:
 
 func updateSums(gui *gocui.Gui, partitionConsumer sarama.PartitionConsumer, refresh <-chan bool, done <-chan bool) {
 	sums := make(map[string]int)
-	sums[kafka.SrcIOS] = 0
-	sums[kafka.SrcBrowser] = 0
-	sums[kafka.SrcWeb] = 0
+	sums[kafkaDemo.SrcIOS] = 0
+	sums[kafkaDemo.SrcBrowser] = 0
+	sums[kafkaDemo.SrcWeb] = 0
 
 ConsumerLoop:
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			var j kafka.Message
+			var j kafkaDemo.Message
 			if err := json.Unmarshal(msg.Value, &j); err != nil {
 				panic(nil)
 			}
@@ -153,9 +154,9 @@ ConsumerLoop:
 					panic(err)
 				}
 				v.Clear()
-				fmt.Fprintln(v, kafka.SrcIOS+": "+string(sums[kafka.SrcIOS]))
-				fmt.Fprintln(v, kafka.SrcBrowser+": "+string(sums[kafka.SrcBrowser]))
-				fmt.Fprintln(v, kafka.SrcWeb+": "+string(sums[kafka.SrcWeb]))
+				fmt.Fprintln(v, kafkaDemo.SrcIOS+": "+strconv.Itoa(sums[kafkaDemo.SrcIOS]))
+				fmt.Fprintln(v, kafkaDemo.SrcBrowser+": "+strconv.Itoa(sums[kafkaDemo.SrcBrowser]))
+				fmt.Fprintln(v, kafkaDemo.SrcWeb+": "+strconv.Itoa(sums[kafkaDemo.SrcWeb]))
 				g.SetCurrentView("sumscreen")
 				return nil
 			})

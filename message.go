@@ -1,4 +1,4 @@
-package kafka
+package kafkaDemo
 
 import (
 	"math/rand"
